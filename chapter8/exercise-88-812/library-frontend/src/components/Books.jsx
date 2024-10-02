@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client';
-import { ALL_BOOKS_BY_GENRES, ALL_GENRES } from '../queries';
+import { useQuery, useSubscription } from '@apollo/client';
+import { ALL_BOOKS_BY_GENRES, ALL_GENRES, BOOK_ADDED } from '../queries';
 
 const Books = (props) => {
   if (!props.show) {

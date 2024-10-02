@@ -6,6 +6,7 @@ import {
   ALL_BOOKS,
   ALL_GENRES,
   ALL_BOOKS_BY_GENRES,
+  BOOK_ADDED,
 } from '../queries';
 
 const NewBook = (props) => {

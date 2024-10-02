@@ -10,12 +10,10 @@ const Author = require('./models/author');
 const User = require('./models/user');
 
 const { PubSub } = require('graphql-subscriptions');
-const book = require('./models/book');
 const pubsub = new PubSub();
 
 const resolvers = {
   Query: {
-    bookCount: async () => Book.collection.countDocuments(),
     authorCount: async () => Author.collection.countDocuments(),
     allBooks: async (root, args) => {
       if (args.author) {
@@ -42,24 +40,32 @@ const resolvers = {
       return Book.find({}).populate('author');
     },
     allAuthors: async (root, args) => {
-      return Author.find({});
+      console.log('Author.find');
+      const authorWithBookCounts = await Author.aggregate([
+        {
+          $lookup: {
+            from: 'books',
+            localField: '_id',
+            foreignField: 'author',
+            as: 'books',
+          },
+        },
+
+        {
+          $addFields: {
+            bookCount: { $size: '$books' },
+          },
+        },
+        {
+          $project: {
+            books: 0, // Exclude the books array from the final output
+          },
+        },
+      ]);
+      return authorWithBookCounts;
     },
     me: (root, args, context) => {
       return context.currentUser;
-    },
-  },
-  Author: {
-    bookCount: async (author) => {
-      try {
-        return Book.collection.countDocuments({ author: author._id });
-      } catch (error) {
-        throw new GraphQLError('An error occured while counting books', {
-          extensions: {
-            code: 'INTERNAL_SERVER_ERROR',
-            error,
-          },
-        });
-      }
     },
   },
   Mutation: {
@@ -98,8 +104,11 @@ const resolvers = {
           genres: args.genres,
         });
         const savedBook = await book.save();
-        pubsub.publish('BOOK_ADDED', { bookAdded: savedBook });
-        return Book.findById(savedBook._id).populate('author');
+        const bookWithAuthor = await Book.findById(savedBook._id).populate(
+          'author'
+        );
+        pubsub.publish('BOOK_ADDED', { bookAdded: bookWithAuthor });
+        return bookWithAuthor;
       } catch (error) {
         throw new GraphQLError('An error occurred while adding the book', {
           extensions: {
